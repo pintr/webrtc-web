@@ -4,5 +4,8 @@ body {
 
 video {
   max-width: 100%;
-  width: 320px;
+  width: 640px;
+  /* Add CSS filters */
+  filter: blur(4px) invert(1) opacity(1);
+  filter: hue-rotate(90deg) saturate(200%);
 }

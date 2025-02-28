@@ -13,6 +13,22 @@
 
   <h1>Realtime communication with WebRTC</h1>
 
+  <!-- Local video -->
+  <video id="localVideo" autoplay playsinline></video>
+  <!-- Incoming video from remote -->
+  <video id="remoteVideo" autoplay playsinline></video>
+
+  <!-- Command buttons -->
+  <div>
+    <button id="startButton">Start</button>
+    <button id="callButton">Call</button>
+    <button id="hangupButton">Hang up</button>
+  </div>
+
+  <!-- Shim used for adaptation of the specifications and prefixes between different browsers -->
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <!-- Script for setting up the stream -->
+  <script src="js/main.js"></script>
 </body>
 
 </html>

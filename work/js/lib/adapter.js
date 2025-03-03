@@ -1023,17 +1023,15 @@
 
             this.onicecandidate = null;
             this.ontrack = null;
-            this.ontrack = null;
-            this.onremovestream = null;
             this.onsignalingstatechange = null;
             this.oniceconnectionstatechange = null;
             this.onnegotiationneeded = null;
             this.ondatachannel = null;
 
-            this.localStreams = [];
+            this.localTracks = [];
             this.remoteStreams = [];
-            this.getLocalStreams = function () {
-              return self.localStreams;
+            this.getlocalTracks = function () {
+              return self.localTracks;
             };
             this.getRemoteStreams = function () {
               return self.remoteStreams;
@@ -1131,17 +1129,17 @@
             this._localIceCandidatesBuffer = [];
           };
 
-          window.RTCPeerConnection.prototype.addStream = function (stream) {
+          window.RTCPeerConnection.prototype.addTrack = function (track) {
             // Clone is necessary for local demos mostly, attaching directly
             // to two different senders does not work (build 10547).
-            this.localStreams.push(stream.clone());
+            this.localTracks.push(track.clone());
             this._maybeFireNegotiationNeeded();
           };
 
-          window.RTCPeerConnection.prototype.removeStream = function (stream) {
-            var idx = this.localStreams.indexOf(stream);
+          window.RTCPeerConnection.prototype.removeTrack = function (stream) {
+            var idx = this.localTracks.indexOf(stream);
             if (idx > -1) {
-              this.localStreams.splice(idx, 1);
+              this.localTracks.splice(idx, 1);
               this._maybeFireNegotiationNeeded();
             }
           };
@@ -1493,10 +1491,10 @@
                   stream.addTrack(track);
 
                   // FIXME: look at direction.
-                  if (self.localStreams.length > 0 &&
-                    self.localStreams[0].getTracks().length >= sdpMLineIndex) {
+                  if (self.localTracks.length > 0 &&
+                    self.localTracks[0].getTracks().length >= sdpMLineIndex) {
                     // FIXME: actually more complicated, needs to match types etc
-                    var localtrack = self.localStreams[0]
+                    var localtrack = self.localTracks[0]
                       .getTracks()[sdpMLineIndex];
                     rtpSender = new RTCRtpSender(localtrack,
                       transports.dtlsTransport);
@@ -1714,9 +1712,9 @@
             var numAudioTracks = 0;
             var numVideoTracks = 0;
             // Default to sendrecv.
-            if (this.localStreams.length) {
-              numAudioTracks = this.localStreams[0].getAudioTracks().length;
-              numVideoTracks = this.localStreams[0].getVideoTracks().length;
+            if (this.localTracks.length) {
+              numAudioTracks = this.localTracks[0].getAudioTracks().length;
+              numVideoTracks = this.localTracks[0].getVideoTracks().length;
             }
             // Determine number of audio and video tracks we need to send/recv.
             if (offerOptions) {
@@ -1732,9 +1730,9 @@
                 numVideoTracks = offerOptions.offerToReceiveVideo;
               }
             }
-            if (this.localStreams.length) {
+            if (this.localTracks.length) {
               // Push local streams.
-              this.localStreams[0].getTracks().forEach(function (track) {
+              this.localTracks[0].getTracks().forEach(function (track) {
                 tracks.push({
                   kind: track.kind,
                   track: track,
@@ -1808,7 +1806,7 @@
               };
               var transceiver = transceivers[sdpMLineIndex];
               sdp += SDPUtils.writeMediaSection(transceiver,
-                transceiver.localCapabilities, 'offer', self.localStreams[0]);
+                transceiver.localCapabilities, 'offer', self.localTracks[0]);
             });
 
             this._pendingOffer = transceivers;
@@ -1833,7 +1831,7 @@
                 transceiver.remoteCapabilities);
 
               sdp += SDPUtils.writeMediaSection(transceiver, commonCapabilities,
-                'answer', self.localStreams[0]);
+                'answer', self.localTracks[0]);
             });
 
             var desc = new RTCSessionDescription({

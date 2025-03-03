@@ -1,3 +1,38 @@
+/*
+First up, Alice and Bob exchange network information. 
+The expression ‘finding candidates' refers to the process of finding network interfaces and ports using the ICE framework.
+
+1. Alice creates an RTCPeerConnection object with an onicecandidate (addEventListener('icecandidate')) handler.
+   In the code is the localPeerConnection initialisation and event handler definition 
+
+2. Alice calls getUserMedia() and adds the stream to localPeerConnection.
+
+3. The onicehandler is called when candidates become available.
+
+4. Alice sends serialized candidate data to Bob.
+   This is the signaling process, usually done via a messaging service.
+
+5. When Bob gets a candidate message from Alice, 
+   He calls addIceCandidate(), to add the candidate to the remote peer description.
+*/
+
+/*
+WebRTC need to find out and exchange local and remote media streams, and media information.
+Signaling to exchange media configuration information proceeds by exchanging blobs of metadata, known as an offer and an answer, using the Session Description Protocol.
+
+1. Alice creates the offer using the createOffer method, that returns a promise with the Alice's RTCSessionDescription.
+
+2. If successfull, Alice sets the local description and sends it to Bob using the signaling channel
+
+3. Bob sets the received description as the remote description
+
+4. Bob then creates the answer and passses the remote description he got from Alice.
+   At this point a local session can be generated. 
+   The createAnswer() promise passes on an RTCSessionDescription: Bob sets that as the local description and sends it to Alice.
+
+5. When Alice gets Bob's session description, she sets that as the remote description and the conneciton is created.
+*/
+
 'use strict';
 
 // In this case only video will be streamed, without particular constraints
@@ -22,6 +57,10 @@ const remoteVideo = document.getElementById('remoteVideo')
 let localStream;
 let remoteStream;
 
+// Variables for the tracks of the local stream
+let localTracks;
+let remoteTracks;
+
 // Variables for the RTCPeerConnection, both local and remote.
 // The RTCPeerConnection represents the WebRTC session: it allows to connection and communication between peers (browsers)
 // It contains all the protocols used by WebRTC, except the Signaling
@@ -34,6 +73,7 @@ let remotePeerConnection;
 // Set the MediaStream as the source of the local video element
 function gotLocalMediaStream(mediaStream) {
   localStream = mediaStream;
+  localTracks = localStream.getTracks();
   localVideo.srcObject = mediaStream;
   trace('Received local stream.');
   callButton.disabled = false;  // Enable call button.
@@ -43,38 +83,18 @@ function gotLocalMediaStream(mediaStream) {
 // Adding a new track means that a remote peer has accepted the local offer and connected to the local peer.
 // The MediaStream included in the event is added as source of the remote video element
 function gotRemoteMediaStream(event) {
-  const mediaStream = event.stream;
-  remoteVideo.srcObject = mediaStream;
-  remoteStream = mediaStream;
+  let remoteStream = event.streams[0]
+  if (!remoteStream) {
+      remoteStream = new MediaStream();
+      remoteStream.addTrack(event.track);
+      console.log('Created stream from track:', remoteStream);
+  }
+  remoteVideo.srcObject = remoteStream;
   trace('Remote peer connection received remote stream.');
 }
 
-// Function that handles the arror given by the media stream by printing it
-function handleLocalMediaStreamError(error) {
-  console.log('navigator.mediaDevices.getUserMedia error: ', error);
-};
-
 
 // Add behavior for video streams.
-
-// Logs a message with the id and size of a video element.
-function logVideoLoaded(event) {
-  const video = event.target;
-  trace(`${video.id} videoWidth: ${video.videoWidth}px, ` +
-    `videoHeight: ${video.videoHeight}px.`);
-}
-
-// Logs a message with the id and size of a video element.
-// This event is fired when video begins streaming.
-function logResizedVideo(event) {
-  logVideoLoaded(event);
-
-  if (startTime) {
-    const elapsedTime = window.performance.now() - startTime;
-    startTime = null;
-    trace(`Setup time: ${elapsedTime.toFixed(3)}ms.`);
-  }
-}
 
 // Logs the local video ID and size when added (start button click).
 localVideo.addEventListener('loadedmetadata', logVideoLoaded);
@@ -104,8 +124,8 @@ function callAction() {
   trace('Starting call.');
   startTime = window.performance.now(); // Set the start time when button is pushed.
   // Get local stream tracks, to print those in use, ìn this case only one.
-  const videoTracks = localStream.getVideoTracks();
-  const audioTracks = localStream.getAudioTracks();
+  const videoTracks = localTracks.filter(track => track.kind === 'video');
+  const audioTracks = localTracks.filter(track => track.kind === 'audio');
   if (videoTracks.length > 0) {
     trace(`Using video device: ${videoTracks[0].label}.`);
   }
@@ -133,10 +153,10 @@ function callAction() {
   remotePeerConnection.addEventListener('icecandidate', handleConnection);
   remotePeerConnection.addEventListener('iceconnectionstatechange', handleConnectionChange);
   // The track event is sent to the handler when a new track has been added to an RTCRtpReceiver, which is part of the connection.
-  remotePeerConnection.addEventListener('addstream', gotRemoteMediaStream);
+  remotePeerConnection.addEventListener('track', gotRemoteMediaStream);
 
   // Add a new media track to the set of tracks to be transmitted to other peers.
-  localPeerConnection.addStream(localStream);
+  localPeerConnection.addTrack(localTracks[0]);
   trace('Added local track to localPeerConnection.');
 
   trace('localPeerConnection createOffer start.');
@@ -261,6 +281,54 @@ function createdAnswer(description) {
     }).catch(setSessionDescriptionError);
 }
 
+// Define helper functions.
+
+// Gets the "other" peer connection.
+function getOtherPeer(peerConnection) {
+  return (peerConnection === localPeerConnection) ?
+    remotePeerConnection : localPeerConnection;
+}
+
+// Gets the name of a certain peer connection.
+function getPeerName(peerConnection) {
+  return (peerConnection === localPeerConnection) ?
+    'localPeerConnection' : 'remotePeerConnection';
+}
+
+// Logs an action (text) and the time when it happened on the console.
+function trace(text) {
+  text = text.trim();
+  const now = (window.performance.now() / 1000).toFixed(3);
+
+  console.log(now, text);
+}
+
+// Logs
+
+// Function that handles the arror given by the media stream by printing it
+function handleLocalMediaStreamError(error) {
+  console.log('navigator.mediaDevices.getUserMedia error: ', error);
+};
+
+// Logs a message with the id and size of a video element.
+function logVideoLoaded(event) {
+  const video = event.target;
+  trace(`${video.id} videoWidth: ${video.videoWidth}px, ` +
+    `videoHeight: ${video.videoHeight}px.`);
+}
+
+// Logs a message with the id and size of a video element.
+// This event is fired when video begins streaming.
+function logResizedVideo(event) {
+  logVideoLoaded(event);
+
+  if (startTime) {
+    const elapsedTime = window.performance.now() - startTime;
+    startTime = null;
+    trace(`Setup time: ${elapsedTime.toFixed(3)}ms.`);
+  }
+}
+
 // Logs that the connection succeeded.
 function handleConnectionSuccess(peerConnection) {
   trace(`${getPeerName(peerConnection)} addIceCandidate success.`);
@@ -300,60 +368,3 @@ function setLocalDescriptionSuccess(peerConnection) {
 function setRemoteDescriptionSuccess(peerConnection) {
   setDescriptionSuccess(peerConnection, 'setRemoteDescription');
 }
-
-// Define helper functions.
-
-// Gets the "other" peer connection.
-function getOtherPeer(peerConnection) {
-  return (peerConnection === localPeerConnection) ?
-    remotePeerConnection : localPeerConnection;
-}
-
-// Gets the name of a certain peer connection.
-function getPeerName(peerConnection) {
-  return (peerConnection === localPeerConnection) ?
-    'localPeerConnection' : 'remotePeerConnection';
-}
-
-// Logs an action (text) and the time when it happened on the console.
-function trace(text) {
-  text = text.trim();
-  const now = (window.performance.now() / 1000).toFixed(3);
-
-  console.log(now, text);
-}
-
-/*
-First up, Alice and Bob exchange network information. 
-The expression ‘finding candidates' refers to the process of finding network interfaces and ports using the ICE framework.
-
-1. Alice creates an RTCPeerConnection object with an onicecandidate (addEventListener('icecandidate')) handler.
-   In the code is the localPeerConnection initialisation and event handler definition 
-
-2. Alice calls getUserMedia() and adds the stream to localPeerConnection.
-
-3. The onicehandler is called when candidates become available.
-
-4. Alice sends serialized candidate data to Bob.
-   This is the signaling process, usually done via a messaging service.
-
-5. When Bob gets a candidate message from Alice, 
-   He calls addIceCandidate(), to add the candidate to the remote peer description.
-*/
-
-/*
-WebRTC need to find out and exchange local and remote media streams, and media information.
-Signaling to exchange media configuration information proceeds by exchanging blobs of metadata, known as an offer and an answer, using the Session Description Protocol.
-
-1. Alice creates the offer using the createOffer method, that returns a promise with the Alice's RTCSessionDescription.
-
-2. If successfull, Alice sets the local description and sends it to Bob using the signaling channel
-
-3. Bob sets the received description as the remote description
-
-4. Bob then creates the answer and passses the remote description he got from Alice.
-   At this point a local session can be generated. 
-   The createAnswer() promise passes on an RTCSessionDescription: Bob sets that as the local description and sends it to Alice.
-
-5. When Alice gets Bob's session description, she sets that as the remote description and the conneciton is created.
-*/

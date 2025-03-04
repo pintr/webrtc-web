@@ -2,7 +2,8 @@ body {
   font-family: sans-serif;
 }
 
-video {
+textarea {
   max-width: 100%;
-  width: 320px;
+  width: 400px;
+  height: 250px;
 }

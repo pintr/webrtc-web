@@ -16,6 +16,7 @@
 
 <!DOCTYPE html>
 <html>
+
 <head>
 
   <meta name="description" content="Realtime communication with WebRTC" />
@@ -30,136 +31,135 @@
   <title>Google codelab: WebRTC</title>
 
   <style>
-   .hidden {
-    display: none;
-  }
+    .hidden {
+      display: none;
+    }
 
-  a {
-    color: #6fa8dc;
-    font-weight: 300;
-    text-decoration: none;
-  }
+    a {
+      color: #6fa8dc;
+      font-weight: 300;
+      text-decoration: none;
+    }
 
-  a:hover {
-    color: #3d85c6;
-    text-decoration: underline;
-  }
+    a:hover {
+      color: #3d85c6;
+      text-decoration: underline;
+    }
 
-  #steps a {
-    display: block;
-    margin: 0 0 0.5em 0;
-  }
+    #steps a {
+      display: block;
+      margin: 0 0 0.5em 0;
+    }
 
-  h1 a {
-    font-weight: 300;
-    margin: 0 10px 0 0;
-    white-space: nowrap;
-  }
+    h1 a {
+      font-weight: 300;
+      margin: 0 10px 0 0;
+      white-space: nowrap;
+    }
 
-  body {
-    font-family: 'Roboto', sans-serif;
-    font-weight: 300;
-    margin: 0;
-    padding: 1em;
-    word-break: break-word;
-  }
+    body {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 300;
+      margin: 0;
+      padding: 1em;
+      word-break: break-word;
+    }
 
-  code {
-    font-family: 'Roboto', sans-serif;
-    font-weight: 400;
-  }
+    code {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 400;
+    }
 
-  div#container {
-    margin: 0 auto 0 auto;
-    max-width: 40em;
-    padding: 1em 1.5em 1.3em 1.5em;
-  }
+    div#container {
+      margin: 0 auto 0 auto;
+      max-width: 40em;
+      padding: 1em 1.5em 1.3em 1.5em;
+    }
 
-  h1 {
-    border-bottom: 1px solid #aaa;
-    font-family: 'Roboto condensed', sans-serif;
-    font-size: 32px;
-    font-weight: 500;
-    margin: 0 0 1em 0;
-    padding: 0 0 0.5em 0;
-  }
-
-  h2 {
-    color: #444;
-    font-family: 'Roboto condensed', sans-serif;
-    font-weight: 500;
-    line-height: 1.2em;
-    margin: 0 0 0.8em 0;
-  }
-
-  h3 {
-    color: #666;
-    font-family: 'Roboto condensed', sans-serif;
-    font-weight: 500;
-    margin: 1.8em 0 0.5em 0;
-    white-space: nowrap;
-  }
-
-  img {
-    border: none;
-    max-width: 100%;
-  }
-
-  p {
-    color: #444;
-    font-weight: 300;
-    line-height: 1.6em;
-  }
-
-  p.borderBelow {
-    border-bottom: 1px solid #aaa;
-    padding: 0 0 20px 0;
-  }
-
-  section p:last-of-type {
-    margin: 0;
-  }
-
-  section {
-    border-bottom: 1px solid #eee;
-    margin: 0 0 2em 0;
-    padding: 0 0 2em 0;
-  }
-
-  section:last-of-type {
-    border-color: #ccc;
-  }
-
-  h1 span {
-    white-space: nowrap;
-  }
-
-  strong {
-    font-weight: 500;
-  }
-
-  @media screen and (max-width: 650px) {
     h1 {
-      font-size: 24px;
+      border-bottom: 1px solid #aaa;
+      font-family: 'Roboto condensed', sans-serif;
+      font-size: 32px;
+      font-weight: 500;
+      margin: 0 0 1em 0;
+      padding: 0 0 0.5em 0;
     }
-  }
 
-  @media screen and (max-width: 550px) {
-    button:active {
-      background-color: darkRed;
+    h2 {
+      color: #444;
+      font-family: 'Roboto condensed', sans-serif;
+      font-weight: 500;
+      line-height: 1.2em;
+      margin: 0 0 0.8em 0;
     }
-    h1 {
-      font-size: 22px;
+
+    h3 {
+      color: #666;
+      font-family: 'Roboto condensed', sans-serif;
+      font-weight: 500;
+      margin: 1.8em 0 0.5em 0;
+      white-space: nowrap;
     }
-  }
 
-  @media screen and (max-width: 450px) {
-    h1 {
-      font-size: 20px;
+    img {
+      border: none;
+      max-width: 100%;
     }
-  }
 
+    p {
+      color: #444;
+      font-weight: 300;
+      line-height: 1.6em;
+    }
 
+    p.borderBelow {
+      border-bottom: 1px solid #aaa;
+      padding: 0 0 20px 0;
+    }
+
+    section p:last-of-type {
+      margin: 0;
+    }
+
+    section {
+      border-bottom: 1px solid #eee;
+      margin: 0 0 2em 0;
+      padding: 0 0 2em 0;
+    }
+
+    section:last-of-type {
+      border-color: #ccc;
+    }
+
+    h1 span {
+      white-space: nowrap;
+    }
+
+    strong {
+      font-weight: 500;
+    }
+
+    @media screen and (max-width: 650px) {
+      h1 {
+        font-size: 24px;
+      }
+    }
+
+    @media screen and (max-width: 550px) {
+      button:active {
+        background-color: darkRed;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+    }
+
+    @media screen and (max-width: 450px) {
+      h1 {
+        font-size: 20px;
+      }
+    }
   </style>
 
 </head>
@@ -172,25 +172,32 @@
 
       <h1>Google codelab:<br>Realtime communication with WebRTC</h1>
 
-      <p>Code for this codelab is available from <a href="//github.com/googlecodelabs/webrtc-web" title="View the repository for this site">github.com/googlecodelabs/webrtc-web</a>.</p>
+      <p>Code for this codelab is available from the <a href="//github.com/googlecodelabs/webrtc-web"
+          title="View the repository for this site">webrtc-web</a> repository on GitHub.</p>
 
-      <p>This is a work in progress. If you find a mistake or have a suggestion, please <a href="https://github.com/googlecodelabs/webrtc-web/issues">file an issue</a>.</p>
-
-      <p>Thanks!</p>
+      <p>Based on the article <a href="https://web.dev/articles/webrtc-basics">Get started with WebRTC</a>.</p>
 
     </section>
 
     <section id="steps">
-      <!-- <a href="/webrtc/step-01">Step 1: Get the sample code</a> -->
+      <a href="work">Work in progress</a>
+      <a href="step-01">Stream video from your webcam</a>
+      <a href="step-02">Stream video with RTCPeerConnection</a>
+      <a href="step-03">Use RTCDataChannel to exchange data</a>
+      <a href="step-04">Set up a signaling service to exchange messages</a>
+      <a href="step-05">Combine peer connection and signaling</a>
+      <a href="step-06">Take a photo and share it via a data channel</a>
     </section>
 
   </div>
 
   <script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+    (function (i, s, o, g, r, a, m) {
+      i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+        (i[r].q = i[r].q || []).push(arguments)
+      }, i[r].l = 1 * new Date(); a = s.createElement(o),
+        m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
 
     ga('create', 'UA-77741936-1', 'auto');
     ga('send', 'pageview');
@@ -198,4 +205,5 @@
   </script>
 
 </body>
+
 </html>

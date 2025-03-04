@@ -13,16 +13,16 @@
 
   <h1>Realtime communication with WebRTC</h1>
 
-  <!-- Local video -->
-  <video id="localVideo" autoplay playsinline></video>
-  <!-- Incoming video from remote -->
-  <video id="remoteVideo" autoplay playsinline></video>
+  <!-- Textarea used for writing text -->
+  <textarea id="dataChannelSend" disabled placeholder="Press Start, enter some text, then press Send."></textarea>
+  <!-- Textarea used for displaying text -->
+  <textarea id="dataChannelReceive" disabled></textarea>
 
   <!-- Command buttons -->
-  <div>
+  <div id="buttons">
     <button id="startButton">Start</button>
-    <button id="callButton">Call</button>
-    <button id="hangupButton">Hang up</button>
+    <button id="sendButton">Send</button>
+    <button id="closeButton">Stop</button>
   </div>
 
   <!-- Shim used for adaptation of the specifications and prefixes between different browsers -->

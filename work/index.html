@@ -13,18 +13,8 @@
 
   <h1>Realtime communication with WebRTC</h1>
 
-  <!-- Textarea used for writing text -->
-  <textarea id="dataChannelSend" disabled placeholder="Press Start, enter some text, then press Send."></textarea>
-  <!-- Textarea used for displaying text -->
-  <textarea id="dataChannelReceive" disabled></textarea>
-
-  <!-- Command buttons -->
-  <div id="buttons">
-    <button id="startButton">Start</button>
-    <button id="sendButton">Send</button>
-    <button id="closeButton">Stop</button>
-  </div>
-
+  <!-- Library used for establishing bidirectional communication using WebSockets. Used for signaling -->
+  <script src="/socket.io/socket.io.js"></script>
   <!-- Shim used for adaptation of the specifications and prefixes between different browsers -->
   <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
   <!-- Script for setting up the stream -->

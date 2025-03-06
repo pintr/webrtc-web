@@ -1,3 +1,8 @@
+/*
+Following the getUserMedia() call, the browser requests permission from the user to access their camera (if this is the first time camera access has been requested for the current origin). 
+If successful, a MediaStream is returned, which can be used by a media element to show it, such as a video.
+*/
+
 'use strict';
 
 // const used as an argument to getUserMedia, specifying what media to get, could have had "audio" too
@@ -6,17 +11,21 @@ const mediaStreamingConstraints = {
   audio: false,
   // video: true,
   video: {
-    width: {
-      min: 640,
-      max: 1920
+    mandatory: {
+      minWidth: 1280,
+      minHeight: 720,
     },
-    height: {
-      max: 1080
-    },
-    frameRate: {
-      min: 3,
-      max: 60
-    }
+    // width: {
+    //   min: 640,
+    //   max: 1920
+    // },
+    // height: {
+    //   max: 1080
+    // },
+    // frameRate: {
+    //   min: 3,
+    //   max: 60
+    // }
   }
 }
 

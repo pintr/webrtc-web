@@ -1,5 +1,5 @@
 /*
-Signaling erver code used for managing the rooms and the peers
+Signaling server code used for managing the rooms and the peers
 */
 
 'use strict';
@@ -75,6 +75,11 @@ io.on('connection', (socket) => {
           }
         });
       }
+    });
+
+    // Disconnection event
+    socket.on('bye', function(){
+      console.log('received bye');
     });
   });
 })

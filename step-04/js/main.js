@@ -10,7 +10,7 @@ The web page won't display anything, but the console will log messages about the
 
 'use strict';
 
-// Variable that indicates wheter the client initiates or joins a room
+// Variable that indicates whether the client initiates or joins a room
 var isInitiator;
 
 // Set window room using the location or, if absent, asking to the user

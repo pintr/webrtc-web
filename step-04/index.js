@@ -1,5 +1,5 @@
 /*
-Signaling erver code used for managing the rooms and the peers
+Signaling server code used for managing the rooms and the peers
 */
 
 'use strict';
@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
     log('Room ' + room + ' now has ' + numClients + ' client(s)');
 
     if (numClients === 0) {
-      // If there are no clinets, create the room and send the event 'created'
+      // If there are no clients, create the room and send the event 'created'
       socket.join(room);
       log('Client ID ' + socket.id + ' created room ' + room);
       socket.emit('created', room, socket.id);

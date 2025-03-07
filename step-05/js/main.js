@@ -96,9 +96,7 @@ var remoteVideo = document.querySelector('#remoteVideo');
 navigator.mediaDevices.getUserMedia({
   audio: false,
   video: true
-})
-.then(gotStream)
-.catch(function(e) {
+}).then(gotStream).catch(function(e) {
   alert('getUserMedia() error: ' + e.name);
 });
 
@@ -202,7 +200,7 @@ function onCreateSessionDescriptionError(error) {
 function requestTurn(turnURL) {
   var turnExists = false;
   for (var i in pcConfig.iceServers) {
-    if (pcConfig.iceServers[i].urls.substr(0, 5) === 'turn:') {
+    if (pcConfig.iceServers[i].urls.startsWith('turn:')) {
       turnExists = true;
       turnReady = true;
       break;

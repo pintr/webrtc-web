@@ -13,6 +13,11 @@
 
   <h1>Realtime communication with WebRTC</h1>
 
+  <div id="videos">
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+  </div>
+
   <!-- Library used for establishing bidirectional communication using WebSockets. Used for signaling -->
   <script src="/socket.io/socket.io.js"></script>
   <!-- Shim used for adaptation of the specifications and prefixes between different browsers -->

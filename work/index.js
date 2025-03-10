@@ -8,22 +8,27 @@ Signaling server code used for managing the rooms and the peers
 
 // OS information, used for the ipaddr event
 var os = require('os');
-// File streaming module using an HTTP server
-var nodeStatic = require('node-static');
+// Node.js web application framework
+const express = require('express');
 // HTTP core module of Node.js. Creates an HTTP server
-var http = require('http');
+const http = require('http');
 // Open and manage the WebSocket connection
-var socketIO = require('socket.io');
+const { Server } = require('socket.io');
 
+// Define express application, http server, and socket
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-// Define the HTTP server
-var fileServer = new (nodeStatic.Server)();
-var app = http.createServer(function (req, res) {
-  fileServer.serve(req, res);
-}).listen(8080);
+// Serve static files from the current folder
+app.use(express.static(__dirname));
+
+// Start the server
+server.listen(8080, () => {
+  console.log('Server running on http://0.0.0.0:8080');
+});
 
 // Listen for client connection on socket
-var io = socketIO.listen(app);
 io.on('connection', (socket) => {
   // Convenience function to log server messages on the client
   function log() {
@@ -42,24 +47,24 @@ io.on('connection', (socket) => {
   socket.on('create or join', function (room) {
     log('Received request to create or join room ' + room);
 
-    // Exctract the clients already in the room, their number, then log
-    var clientsInRoom = io.sockets.adapter.rooms[room];
-    var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
+    // Extract the clients already in the room, their number, then log
+    var clientsInRoom = io.sockets.adapter.rooms.get(room);
+    var numClients = clientsInRoom ? clientsInRoom.size : 0;
 
     log('Room ' + room + ' now has ' + numClients + ' client(s)');
 
     if (numClients === 0) {
-      // If there are no clinets, create the room and send the event 'created'
+      // If there are no clients, create the room and send the event 'created'
       socket.join(room);
       log('Client ID ' + socket.id + ' created room ' + room);
       socket.emit('created', room, socket.id);
     } else if (numClients === 1) {
       // If the room already exists and there is a client, send a 'joined' event
       log('Client ID ' + socket.id + ' joined room ' + room);
-      io.sockets.in(room).emit('join', room);
+      io.to(room).emit('join', room);
       socket.join(room);
       socket.emit('joined', room, socket.id);
-      io.sockets.in(room).emit('ready');
+      io.to(room).emit('ready');
     } else {
       // If there are already two clients, the max number, send a 'full' event
       socket.emit('full', room);
@@ -82,4 +87,4 @@ io.on('connection', (socket) => {
       console.log('received bye');
     });
   });
-})
+});

@@ -229,7 +229,6 @@ function createPeerConnection() {
     pc = new RTCPeerConnection(null);
     pc.onicecandidate = handleIceCandidate;
     pc.ontrack = handleRemoteTrackAdded;
-    pc.onconnectionstatechange = handleRemoteTrackRemoved;
     console.log('Created RTCPeerConnnection');
   } catch (e) {
     console.log('Failed to create PeerConnection, exception: ' + e.message);
@@ -273,20 +272,14 @@ function handleIceCandidate(event) {
   }
 }
 
-// Stream the remote video when the remote stream gets added.
-function handleRemoteStreamAdded(event) {
-  console.log('Remote stream added.');
-  remoteStream = event.stream;
-  remoteVideo.srcObject = remoteStream;
-}
-
 // Stream the remote video when the remote track gets added.
 function handleRemoteTrackAdded(event) {
-  console.error('Remote track added.', event);
+  console.log('Remote track added.', event);
   remoteStream = event.streams[0]
   if (!remoteStream) {
     remoteStream = new MediaStream();
     remoteStream.addTrack(event.track);
+    remoteStream.onremovetrack = handleRemoteTrackRemoved;
     console.log('Created stream from track:', remoteStream);
   }
   remoteVideo.srcObject = remoteStream;

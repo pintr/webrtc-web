@@ -83,7 +83,7 @@ io.on('connection', (socket) => {
     });
 
     // Disconnection event
-    socket.on('bye', function(){
+    socket.on('bye', function () {
       console.log('received bye');
     });
   });

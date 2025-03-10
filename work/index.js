@@ -82,9 +82,14 @@ io.on('connection', (socket) => {
       }
     });
 
-    // Disconnection event
-    socket.on('bye', function(){
-      console.log('received bye');
+    // Disconnection events
+    socket.on('disconnect', function (reason) {
+      console.log(`Peer or server disconnected. Reason: ${reason}.`);
+      socket.broadcast.emit('bye');
+    });
+
+    socket.on('bye', function (room) {
+      console.log(`Peer said bye on room ${room}.`);
     });
   });
 });

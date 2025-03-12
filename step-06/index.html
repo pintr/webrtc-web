@@ -5,7 +5,7 @@
 
   <title>Realtime communication with WebRTC</title>
 
-  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="css/main.css" />
 
 </head>
 
@@ -29,10 +29,12 @@
     <div id="trail"></div>
   </div>
 
+  <!-- Library used for establishing bidirectional communication using WebSockets. Used for signaling -->
   <script src="/socket.io/socket.io.js"></script>
+  <!-- Shim used for adaptation of the specifications and prefixes between different browsers -->
   <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <!-- Script for setting up the stream -->
   <script src="js/main.js"></script>
-
 </body>
 
 </html>

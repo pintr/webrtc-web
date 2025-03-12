@@ -1,116 +1,103 @@
 /*
-Combine peer connection with signaling.
-The signaling is done, as in step-04, with Socket.IO running on Node.js.
-The stream is managed using a WebRTC connection (RTCPeerConnection), similarly to step-02
+Share files between peers using RTCDataChannel
+The core parts are:
+1. Establish a data channel between peers (no need to add media streams)
+2. Capture the user's webcam using getMediaUser()
+3. When the user clicks the Snap button, get a snapshot (a video frame) from the video stream and display it in a canvas element
+4. When the user clicks the Send button, convert the image to bytes and send them via a data channel
+5. The receiving side converts data channel message bytes back to an image and displays the image to the user
 */
 
 'use strict';
 
-// Variables used for communication
+// Variables and configuration
 
-// Variable indicating if someone joined the room, and the communication can start
-var isChannelReady = false;
+// Configuration for the peer connection if needed.
+// var configuration = {
+//   'iceServers': [{
+//     'urls': 'stun:stun.l.google.com:19302'
+//   }]
+// };
+var configuration = null;
+
+// Variables used for the communication: peer connection and data channel
+var peerConn;
+var dataChannel;
+
+// Variables used for the dimensions (width and height) of the canvas based on the dimensions of the video stream
+var photoContextW;
+var photoContextH;
+
 // Variable that indicates whether the client initiates or joins a room. Default: false.
 var isInitiator = false;
-// Variable indicating that the peer communication is up and running.
-var isStarted = false;
-// The RTCPeerConneciton
-var pc;
-// Variables containing the media stream for debugging, both of local and remote videos.
-var localStream;
-var remoteStream;
-// Variables for the tracks of the local stream
-let localTracks;
-let remoteTracks;
-// Variable used for TURN servers. True if it exists and it's ready. 
-var turnReady;
+
+// Setup room name
+var room = window.location.hash.substring(1);
+if (!room) {
+  room = window.location.hash = randomToken();
+}
 
 
-// Configs
-
-// Configuration for the peer connection. It contains a freely available Google STUN server
-var pcConfig = {
-  'iceServers': [{
-    'urls': 'stun:stun.l.google.com:19302'
-  }]
-};
-// Set up audio and video regardless of what devices are present.
-// Not used in the example.
-var sdpConstraints = {
-  offerToReceiveAudio: true,
-  offerToReceiveVideo: true
-};
-
-
-// Signaling management
+// Signaling server
 
 // Define a socket for communication
 var socket = io.connect();
 
-// Setup room name and creation/join
-var room = 'foo';
-// Could prompt for room name:
-// room = prompt('Enter room name:');
-if (room !== '') {
-  socket.emit('create or join', room);
-  console.log('Attempted to create or  join room', room);
-}
+// Get the server IP address
+socket.on('ipaddr', function (ipaddr) {
+  console.log('Server IP address is: ' + ipaddr);
+  // updateRoomURL(ipaddr);
+});
 
-
-// Manage socket events
-
-// The room was created by the client, so it is the initiator
-socket.on('created', function (room) {
-  console.log('Created room ' + room);
+// The room was created by the client, so it is the initiator. Get the user media. 
+socket.on('created', function (room, clientId) {
+  console.log('Created room', room, '- my client ID is', clientId);
   isInitiator = true;
-});
-
-// The room is full
-socket.on('full', function (room) {
-  console.log('Room ' + room + ' is full');
-});
-
-// Event sent to the initiator of the room when a new peer joins.
-socket.on('join', function (room) {
-  console.log('Another peer made a request to join room ' + room);
-  console.log('This peer is the initiator of room ' + room + '!');
-  isChannelReady = true;
+  grabWebCamVideo();
 });
 
 // Event sent to the newly added peer when it joins the room.
-socket.on('joined', function (room) {
-  console.log('joined: ' + room);
-  isChannelReady = true;
+socket.on('joined', function (room, clientId) {
+  console.log('This peer has joined room', room, 'with client ID', clientId);
+  isInitiator = false;
+  createPeerConnection(isInitiator, configuration);
+  grabWebCamVideo();
+});
+
+// The room is full. Create another room for the user.
+socket.on('full', function (room) {
+  alert('Room ' + room + ' is full. We will create a new room for you.');
+  window.location.hash = '';
+  window.location.reload();
+});
+
+// The user has joined the room. The communication can start.
+socket.on('ready', function () {
+  console.log('Socket is ready');
+  createPeerConnection(isInitiator, configuration);
 });
 
 // Manage the event of a generic message
 socket.on('message', function (message) {
   console.log('Client received message:', message);
-  if (message === 'got user media') {
-    // The local stream has been added to the video element. Create the peer connection and the offer.
-    maybeStart();
-  } else if (message.type === 'offer') {
-    // The client receives an offer already created.
-    // If it's not the initiator and the communication is not started yet, create an offer.
-    // Otherwise set the remote description and send answer.
-    if (!isInitiator && !isStarted) {
-      maybeStart();
-    }
-    pc.setRemoteDescription(new RTCSessionDescription(message));
-    doAnswer();
-  } else if (message.type === 'answer' && isStarted) {
-    // If the message is an answer set the remote description to the peer connection.
-    pc.setRemoteDescription(new RTCSessionDescription(message));
-  } else if (message.type === 'candidate' && isStarted) {
-    // If the message is a candidate create it and add to the peer connection
-    var candidate = new RTCIceCandidate({
-      sdpMLineIndex: message.label,
-      candidate: message.candidate
-    });
-    pc.addIceCandidate(candidate);
-  } else if (message === 'bye' && isStarted) {
-    // If a peer closes a connection manage the remote peer quit.
-    handleRemoteHangup();
+  signalingMessageCallback(message);
+});
+
+// Manage the event of a peer disconnecting.
+socket.on('disconnect', function (reason) {
+  console.log(`Disconnected: ${reason}.`);
+  sendBtn.disabled = true;
+  snapAndSendBtn.disabled = true;
+});
+
+// Manage the event of a peer leaving the room.
+socket.on('bye', function (room) {
+  console.log(`Peer leaving room ${room}.`);
+  sendBtn.disabled = true;
+  snapAndSendBtn.disabled = true;
+  // If peer did not create the room, re-enter to be creator.
+  if (!isInitiator) {
+    window.location.reload();
   }
 });
 
@@ -125,207 +112,318 @@ function sendMessage(message) {
   socket.emit('message', message);
 }
 
-
-// Manage HTML elements and the media devices
-
-// Select video element in the HTML page where the stream will be placed.
-var localVideo = document.querySelector('#localVideo');
-var remoteVideo = document.querySelector('#remoteVideo');
-
-// Define the constraints and log them.
-var constraints = {
-  video: true
-};
-console.log('Getting user media with constraints', constraints);
-
-// Check if the host is local, otherwise request TURN. NOT WORKING.
-if (location.hostname !== 'localhost') {
-  requestTurn(
-    'https://computeengineondemand.appspot.com/turn?username=41784574&key=4080218913'
-  );
+// Join a room and manage the unloading of the window.
+socket.emit('create or join', room);
+// if the host is local, get the IP address
+if (location.hostname.match(/localhost|127\.0\.0/)) {
+  socket.emit('ipaddr');
 }
-
-// Prompt the user for permission to access a media input (camera), if granted start local streaming
-navigator.mediaDevices.getUserMedia({
-  audio: false,
-  video: true
-}).then(gotStream).catch(function (e) {
-  alert('getUserMedia() error: ' + e.name);
+// Notify the peers when the window is unloaded.
+window.addEventListener('unload', function () {
+  console.log(`Unloading window. Notifying peers in ${room}.`);
+  socket.emit('bye', room);
 });
 
-// Close connection when the current window, contained document, and associated resources are about to be unloaded.
-window.onbeforeunload = function () {
-  sendMessage('bye');
-};
+// Manage HTML elements and functions, and the media devices
 
-// Request turn, if it is present in the pcConfig.iceServers use it
-// Otherwise get one from computeengineondemand.appspot.com. NOT WORKING.
-function requestTurn(turnURL) {
-  var turnExists = false;
-  for (var i in pcConfig.iceServers) {
-    if (pcConfig.iceServers[i].urls.startsWith('turn:')) {
-      turnExists = true;
-      turnReady = true;
-      break;
-    }
+// Component used for streaming the webcam video
+var video = document.querySelector('video');
+// Component that displays a snapshot of a video stream
+var photo = document.getElementById('photo');
+// Component that allows to draw the image to the canvas
+var photoContext = photo.getContext('2d');
+// Components that displays the received images
+var trail = document.getElementById('trail');
+// Button for taking a snapshot of the video stream
+var snapBtn = document.getElementById('snap');
+snapBtn.addEventListener('click', snapPhoto);
+// Button for sending the snapshot to the peer
+var sendBtn = document.getElementById('send');
+sendBtn.addEventListener('click', sendPhoto);
+sendBtn.disabled = true;
+// Button for taking a snapshot and sending it to the peer
+var snapAndSendBtn = document.getElementById('snapAndSend');
+snapAndSendBtn.addEventListener('click', snapAndSend);
+snapAndSendBtn.disabled = true;
+
+// Prompt the user for permission to access a media input (camera), if granted start local streaming
+function grabWebCamVideo() {
+  console.log('Getting user media (video) ...');
+  navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: true
+  })
+    .then(gotStream)
+    .catch(function (e) {
+      alert('getUserMedia() error: ' + e.name);
+    });
+}
+
+// Set the MediaStream as the source of the local video element and enable the snap button
+function gotStream(stream) {
+  console.log('getUserMedia video stream URL:', stream);
+  window.stream = stream; // stream available to console
+  video.srcObject = stream;
+  video.onloadedmetadata = function () {
+    photo.width = photoContextW = video.videoWidth;
+    photo.height = photoContextH = video.videoHeight;
+    console.log('gotStream with width and height:', photoContextW, photoContextH);
+  };
+  show(snapBtn);
+}
+
+// Display image on the canvas and enable the send button
+function snapPhoto() {
+  photoContext.drawImage(video, 0, 0, photo.width, photo.height);
+  show(photo, sendBtn);
+}
+
+// Convert the image to bytes and send them via the data channel
+function sendPhoto() {
+  // Split data channel message in chunks of this byte length.
+  var CHUNK_LEN = 64000;
+  console.log('width and height ', photoContextW, photoContextH);
+  var img = photoContext.getImageData(0, 0, photoContextW, photoContextH),
+    len = img.data.byteLength,
+    n = len / CHUNK_LEN | 0;
+
+  console.log('Sending a total of ' + len + ' byte(s)');
+
+  if (!dataChannel) {
+    logError('Connection has not been initiated. ' +
+      'Get two peers in the same room first');
+    return;
+  } else if (dataChannel.readyState === 'closed') {
+    logError('Connection was lost. Peer closed the connection.');
+    return;
   }
-  if (!turnExists) {
-    console.log('Getting TURN server from ', turnURL);
-    // No TURN server. Get one from computeengineondemand.appspot.com:
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4 && xhr.status === 200) {
-        var turnServer = JSON.parse(xhr.responseText);
-        console.log('Got TURN server: ', turnServer);
-        pcConfig.iceServers.push({
-          'urls': 'turn:' + turnServer.username + '@' + turnServer.turn,
-          'credential': turnServer.password
-        });
-        turnReady = true;
-      }
-    };
-    xhr.open('GET', turnURL, true);
-    xhr.send();
+
+  dataChannel.send(len);
+
+  // split the photo and send in chunks of about 64KB
+  for (var i = 0; i < n; i++) {
+    var start = i * CHUNK_LEN,
+      end = (i + 1) * CHUNK_LEN;
+    console.log(start + ' - ' + (end - 1));
+    dataChannel.send(img.data.subarray(start, end));
+  }
+
+  // send the reminder, if any
+  if (len % CHUNK_LEN) {
+    console.log('last ' + len % CHUNK_LEN + ' byte(s)');
+    dataChannel.send(img.data.subarray(n * CHUNK_LEN));
   }
 }
 
-// Set the MediaStream as the source of the local video element
-// Send a message saying that the media is available
-// Try to start the communication by creating the stream connection, adding the stream and create the offer.
-function gotStream(stream) {
-  console.log('Adding local stream.');
-  localStream = stream;
-  localTracks = localStream.getTracks();
-  localVideo.srcObject = stream;
-  sendMessage('got user media');
-  if (isInitiator) {
-    maybeStart();
-  }
+// Create the snapshot and send it to the peer
+function snapAndSend() {
+  snapPhoto();
+  sendPhoto();
+}
+
+// Properly render the image received from the peer and display it
+function renderPhoto(data) {
+  var canvas = document.createElement('canvas');
+  canvas.width = photoContextW;
+  canvas.height = photoContextH;
+  canvas.classList.add('incomingPhoto');
+  // trail is the element holding the incoming images
+  trail.insertBefore(canvas, trail.firstChild);
+
+  var context = canvas.getContext('2d');
+  var img = context.createImageData(photoContextW, photoContextH);
+  img.data.set(data);
+  context.putImageData(img, 0, 0);
+}
+
+// Function for enabling HTML elements
+function show() {
+  Array.prototype.forEach.call(arguments, function (elem) {
+    elem.style.display = null;
+  });
+}
+
+// Function for hiding HTML elements
+function hide() {
+  Array.prototype.forEach.call(arguments, function (elem) {
+    elem.style.display = 'none';
+  });
+}
+
+// Create a random token for the room name.
+function randomToken() {
+  return Math.floor((1 + Math.random()) * 1e16).toString(16).substring(1);
 }
 
 
 // Manage the RTC communication
 
-// Function that checks if the communication hasn't started yet.
-// In case create the RTCPeerCOnnection, add the local stream, and send an offer.
-function maybeStart() {
-  console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
-  if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
-    console.log('>>>>>> creating peer connection');
-    createPeerConnection();
-    // pc.addStream(localStream);
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    isStarted = true;
-    console.log('isInitiator', isInitiator);
-    if (isInitiator) {
-      doCall();
-    }
+// Manage a signaling messages received from the peer, it could be an offer, an answer, or a candidate.
+function signalingMessageCallback(message) {
+  if (message.type === 'offer') {
+    console.log('Got offer. Sending answer to peer.');
+    peerConn.setRemoteDescription(new RTCSessionDescription(message), function () { },
+      logError);
+    peerConn.createAnswer(onLocalSessionCreated, logError);
+  } else if (message.type === 'answer') {
+    console.log('Got answer.');
+    peerConn.setRemoteDescription(new RTCSessionDescription(message), function () { },
+      logError);
+  } else if (message.type === 'candidate') {
+    peerConn.addIceCandidate(new RTCIceCandidate({
+      candidate: message.candidate,
+      sdpMLineIndex: message.label,
+      sdpMid: message.id
+    }));
+
   }
 }
 
 // Create a new RTCPeerCOnnection and manage all its events
-function createPeerConnection() {
-  try {
-    pc = new RTCPeerConnection(null);
-    pc.onicecandidate = handleIceCandidate;
-    pc.ontrack = handleRemoteTrackAdded;
-    console.log('Created RTCPeerConnnection');
-  } catch (e) {
-    console.log('Failed to create PeerConnection, exception: ' + e.message);
-    alert('Cannot create RTCPeerConnection object.');
-    return;
-  }
-}
+function createPeerConnection(isInitiator, config) {
+  console.log('Creating Peer connection as initiator?', isInitiator, 'config:',
+    config);
+  peerConn = new RTCPeerConnection(config);
 
-// Create the offer and handle it.
-function doCall() {
-  console.log('Sending offer to peer');
-  pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
-}
+  // send any ice candidates to the other peer
+  peerConn.onicecandidate = function (event) {
+    console.log('icecandidate event:', event);
+    if (event.candidate) {
+      sendMessage({
+        type: 'candidate',
+        label: event.candidate.sdpMLineIndex,
+        id: event.candidate.sdpMid,
+        candidate: event.candidate.candidate
+      });
+    } else {
+      console.log('End of candidates.');
+    }
+  };
 
-// Similarly to the offer, create the answer.
-function doAnswer() {
-  console.log('Sending answer to peer.');
-  pc.createAnswer().then(setLocalAndSendMessage, onCreateSessionDescriptionError);
-}
+  if (isInitiator) {
+    console.log('Creating Data Channel');
+    dataChannel = peerConn.createDataChannel('photos');
+    onDataChannelCreated(dataChannel);
 
-// Function used when offer and answer are created.
-// Set the local description to the peer connection and send a message with the session description.
-function setLocalAndSendMessage(sessionDescription) {
-  pc.setLocalDescription(sessionDescription);
-  console.log('setLocalAndSendMessage sending message', sessionDescription);
-  sendMessage(sessionDescription);
-}
-
-// Send the candidate message when received in the event. In case add it to the peer connection.
-function handleIceCandidate(event) {
-  console.log('icecandidate event: ', event);
-  if (event.candidate) {
-    sendMessage({
-      type: 'candidate',
-      label: event.candidate.sdpMLineIndex,
-      id: event.candidate.sdpMid,
-      candidate: event.candidate.candidate
-    });
+    console.log('Creating an offer');
+    peerConn.createOffer().then(function (offer) {
+      return peerConn.setLocalDescription(offer);
+    }).then(() => {
+      console.log('sending local desc:', peerConn.localDescription);
+      sendMessage(peerConn.localDescription);
+    }).catch(logError);
   } else {
-    console.log('End of candidates.');
+    peerConn.ondatachannel = function (event) {
+      console.log('ondatachannel:', event.channel);
+      dataChannel = event.channel;
+      onDataChannelCreated(dataChannel);
+    };
   }
 }
 
-// Stream the remote video when the remote track gets added.
-function handleRemoteTrackAdded(event) {
-  console.log('Remote track added.', event);
-  remoteStream = event.streams[0]
-  if (!remoteStream) {
-    remoteStream = new MediaStream();
-    remoteStream.addTrack(event.track);
-    remoteStream.onremovetrack = handleRemoteTrackRemoved;
-    console.log('Created stream from track:', remoteStream);
+// Set the local session description that will be sent as an answer to the peer
+function onLocalSessionCreated(desc) {
+  console.log('local session created:', desc);
+  peerConn.setLocalDescription(desc).then(function () {
+    console.log('sending local desc:', peerConn.localDescription);
+    sendMessage(peerConn.localDescription);
+  }).catch(logError);
+}
+
+// When the data channel is created, manage its events and HTML elements: open, close, and message
+function onDataChannelCreated(channel) {
+  console.log('onDataChannelCreated:', channel);
+
+  channel.onopen = function () {
+    console.log('CHANNEL opened!!!');
+    sendBtn.disabled = false;
+    snapAndSendBtn.disabled = false;
+  };
+
+  channel.onclose = function () {
+    console.log('Channel closed.');
+    sendBtn.disabled = true;
+    snapAndSendBtn.disabled = true;
   }
-  remoteVideo.srcObject = remoteStream;
+
+  channel.onmessage = (adapter.browserDetails.browser === 'firefox') ?
+    receiveDataFirefoxFactory() : receiveDataChromeFactory();
 }
 
-// Close the connection
+// Manage data coming from a Chrome based browser
+function receiveDataChromeFactory() {
+  var buf, count;
 
-// Hangup and send the bye message.
-function hangup() {
-  console.log('Hanging up.');
-  stop();
-  sendMessage('bye');
+  return function onmessage(event) {
+    if (typeof event.data === 'string') {
+      buf = window.buf = new Uint8ClampedArray(parseInt(event.data));
+      count = 0;
+      console.log('Expecting a total of ' + buf.byteLength + ' bytes');
+      return;
+    }
+
+    var data = new Uint8ClampedArray(event.data);
+    buf.set(data, count);
+
+    count += data.byteLength;
+    console.log('count: ' + count);
+
+    if (count === buf.byteLength) {
+      // we're done: all data chunks have been received
+      console.log('Done. Rendering photo.');
+      renderPhoto(buf);
+    }
+  };
 }
 
-// Handle when the remote peer disconnects.
-function handleRemoteHangup() {
-  console.log('Session terminated.');
-  stop();
-  isInitiator = false;
+// Manage data coming from a Firefox based browser
+function receiveDataFirefoxFactory() {
+  var count, total, parts;
+
+  return function onmessage(event) {
+    if (typeof event.data === 'string') {
+      total = parseInt(event.data);
+      parts = [];
+      count = 0;
+      console.log('Expecting a total of ' + total + ' bytes');
+      return;
+    }
+
+    parts.push(event.data);
+    count += event.data.size;
+    console.log('Got ' + event.data.size + ' byte(s), ' + (total - count) +
+      ' to go.');
+
+    if (count === total) {
+      console.log('Assembling payload');
+      var buf = new Uint8ClampedArray(total);
+      var compose = function (i, pos) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          buf.set(new Uint8ClampedArray(this.result), pos);
+          if (i + 1 === parts.length) {
+            console.log('Done. Rendering photo.');
+            renderPhoto(buf);
+          } else {
+            compose(i + 1, pos + this.result.byteLength);
+          }
+        };
+        reader.readAsArrayBuffer(parts[i]);
+      };
+      compose(0, 0);
+    }
+  };
 }
 
-// Close the peer connection.
-function stop() {
-  isStarted = false;
-  pc.close();
-  pc = null;
-}
 
 // Logs
 
-// Logs an error related to the creation of the offer.
-function handleCreateOfferError(event) {
-  console.log('createOffer() error: ', event);
-}
-
-// Logs an error related to the session description.
-function onCreateSessionDescriptionError(error) {
-  trace('Failed to create session description: ' + error.toString());
-}
-
-// Log that the remote stream has been removed.
-function handleRemoteStreamRemoved(event) {
-  console.log('Remote stream removed. Event: ', event);
-}
-
-// Log that the remote track has been removed.
-function handleRemoteTrackRemoved(event) {
-  console.log('Remote track removed. Event: ', event);
+// Logs generic errors.
+function logError(err) {
+  if (!err) return;
+  if (typeof err === 'string') {
+    console.warn(err);
+  } else {
+    console.warn(err.toString(), err);
+  }
 }

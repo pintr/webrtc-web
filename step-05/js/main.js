@@ -19,9 +19,6 @@ var pc;
 // Variables containing the media stream for debugging, both of local and remote videos.
 var localStream;
 var remoteStream;
-// Variables for the tracks of the local stream
-let localTracks;
-let remoteTracks;
 // Variable used for TURN servers. True if it exists and it's ready. 
 var turnReady;
 
@@ -42,7 +39,7 @@ var sdpConstraints = {
 };
 
 
-// Signaling management
+// Signaling server
 
 // Define a socket for communication
 var socket = io.connect();
@@ -55,9 +52,6 @@ if (room !== '') {
   socket.emit('create or join', room);
   console.log('Attempted to create or  join room', room);
 }
-
-
-// Manage socket events
 
 // The room was created by the client, so it is the initiator
 socket.on('created', function (room) {
@@ -195,7 +189,6 @@ function requestTurn(turnURL) {
 function gotStream(stream) {
   console.log('Adding local stream.');
   localStream = stream;
-  localTracks = localStream.getTracks();
   localVideo.srcObject = stream;
   sendMessage('got user media');
   if (isInitiator) {

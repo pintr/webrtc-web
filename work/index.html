@@ -13,9 +13,20 @@
 
   <h1>Realtime communication with WebRTC</h1>
 
-  <div id="videos">
-    <video id="localVideo" autoplay muted></video>
-    <video id="remoteVideo" autoplay></video>
+  <div id="videoCanvas">
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="photo"></canvas>
+  </div>
+
+  <div id="buttons">
+    <button id="snap">Snap</button><span> then </span><button id="send">Send</button>
+    <span> or </span>
+    <button id="snapAndSend">Snap &amp; Send</button>
+  </div>
+
+  <div id="incoming">
+    <h2>Incoming photos</h2>
+    <div id="trail"></div>
   </div>
 
   <!-- Library used for establishing bidirectional communication using WebSockets. Used for signaling -->

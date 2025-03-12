@@ -59,9 +59,8 @@ const remoteVideo = document.getElementById('remoteVideo')
 let localStream;
 let remoteStream;
 
-// Variables for the tracks of the local stream
+// Variable the local tracks
 let localTracks;
-let remoteTracks;
 
 // Variables for the RTCPeerConnection, both local and remote.
 // The RTCPeerConnection represents the WebRTC session: it allows to connection and communication between peers (browsers)

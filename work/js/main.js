@@ -21,7 +21,7 @@ The core parts are:
 var configuration = null;
 
 // Variables used for the communication: peer connection and data channel
-var peerConn;
+var pc;
 var dataChannel;
 
 // Variables used for the dimensions (width and height) of the canvas based on the dimensions of the video stream
@@ -71,7 +71,7 @@ socket.on('full', function (room) {
   window.location.reload();
 });
 
-// The user has joined the room. The communication can start.
+// The socket is ready. The communication can start.
 socket.on('ready', function () {
   console.log('Socket is ready');
   createPeerConnection(isInitiator, configuration);
@@ -108,7 +108,7 @@ socket.on('log', function (array) {
 
 // Send a generic message that can have different types.
 function sendMessage(message) {
-  console.log('Client sending message: ', message);
+  console.log(`Client [init:${isInitiator}] sending message:`, message);
   socket.emit('message', message);
 }
 
@@ -150,7 +150,7 @@ snapAndSendBtn.disabled = true;
 function grabWebCamVideo() {
   console.log('Getting user media (video) ...');
   navigator.mediaDevices.getUserMedia({
-    audio: false,
+    audio: true,
     video: true
   })
     .then(gotStream)
@@ -190,8 +190,7 @@ function sendPhoto() {
   console.log('Sending a total of ' + len + ' byte(s)');
 
   if (!dataChannel) {
-    logError('Connection has not been initiated. ' +
-      'Get two peers in the same room first');
+    logError('Connection has not been initiated. Get two peers in the same room first');
     return;
   } else if (dataChannel.readyState === 'closed') {
     logError('Connection was lost. Peer closed the connection.');
@@ -262,15 +261,13 @@ function randomToken() {
 function signalingMessageCallback(message) {
   if (message.type === 'offer') {
     console.log('Got offer. Sending answer to peer.');
-    peerConn.setRemoteDescription(new RTCSessionDescription(message), function () { },
-      logError);
-    peerConn.createAnswer(onLocalSessionCreated, logError);
+    pc.setRemoteDescription(new RTCSessionDescription(message), function () { }, logError);
+    pc.createAnswer(onLocalSessionCreated, logError);
   } else if (message.type === 'answer') {
     console.log('Got answer.');
-    peerConn.setRemoteDescription(new RTCSessionDescription(message), function () { },
-      logError);
+    pc.setRemoteDescription(new RTCSessionDescription(message), function () { }, logError);
   } else if (message.type === 'candidate') {
-    peerConn.addIceCandidate(new RTCIceCandidate({
+    pc.addIceCandidate(new RTCIceCandidate({
       candidate: message.candidate,
       sdpMLineIndex: message.label,
       sdpMid: message.id
@@ -281,12 +278,11 @@ function signalingMessageCallback(message) {
 
 // Create a new RTCPeerCOnnection and manage all its events
 function createPeerConnection(isInitiator, config) {
-  console.log('Creating Peer connection as initiator?', isInitiator, 'config:',
-    config);
-  peerConn = new RTCPeerConnection(config);
+  console.log('Creating Peer connection as initiator?', isInitiator, 'config:', config);
+  pc = new RTCPeerConnection(config);
 
   // send any ice candidates to the other peer
-  peerConn.onicecandidate = function (event) {
+  pc.onicecandidate = function (event) {
     console.log('icecandidate event:', event);
     if (event.candidate) {
       sendMessage({
@@ -302,18 +298,18 @@ function createPeerConnection(isInitiator, config) {
 
   if (isInitiator) {
     console.log('Creating Data Channel');
-    dataChannel = peerConn.createDataChannel('photos');
+    dataChannel = pc.createDataChannel('photos');
     onDataChannelCreated(dataChannel);
 
     console.log('Creating an offer');
-    peerConn.createOffer().then(function (offer) {
-      return peerConn.setLocalDescription(offer);
+    pc.createOffer().then(function (offer) {
+      return pc.setLocalDescription(offer);
     }).then(() => {
-      console.log('sending local desc:', peerConn.localDescription);
-      sendMessage(peerConn.localDescription);
+      console.log('sending local desc:', pc.localDescription);
+      sendMessage(pc.localDescription);
     }).catch(logError);
   } else {
-    peerConn.ondatachannel = function (event) {
+    pc.ondatachannel = function (event) {
       console.log('ondatachannel:', event.channel);
       dataChannel = event.channel;
       onDataChannelCreated(dataChannel);
@@ -324,9 +320,9 @@ function createPeerConnection(isInitiator, config) {
 // Set the local session description that will be sent as an answer to the peer
 function onLocalSessionCreated(desc) {
   console.log('local session created:', desc);
-  peerConn.setLocalDescription(desc).then(function () {
-    console.log('sending local desc:', peerConn.localDescription);
-    sendMessage(peerConn.localDescription);
+  pc.setLocalDescription(desc).then(function () {
+    console.log('sending local desc:', pc.localDescription);
+    sendMessage(pc.localDescription);
   }).catch(logError);
 }
 

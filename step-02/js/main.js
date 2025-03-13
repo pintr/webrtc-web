@@ -7,7 +7,7 @@ The expression ‘finding candidates' refers to the process of finding network i
 
 2. Alice calls getUserMedia() and adds the stream to localPeerConnection.
 
-3. The onicehandler is called when candidates become available.
+3. The onicecandidate handler is called when candidates become available.
 
 4. Alice sends serialized candidate data to Bob.
    This is the signaling process, usually done via a messaging service.

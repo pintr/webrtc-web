@@ -128,7 +128,8 @@ var remoteVideo = document.querySelector('#remoteVideo');
 
 // Define the constraints and log them.
 var constraints = {
-  video: true
+  audio: true,
+  video: true,
 };
 console.log('Getting user media with constraints', constraints);
 
@@ -141,7 +142,7 @@ if (location.hostname !== 'localhost') {
 
 // Prompt the user for permission to access a media input (camera), if granted start local streaming
 navigator.mediaDevices.getUserMedia({
-  audio: false,
+  audio: true,
   video: true
 }).then(gotStream).catch(function (e) {
   alert('getUserMedia() error: ' + e.name);
